@@ -56,7 +56,6 @@ page = st.sidebar.radio(
     ]
 )
 
-
 st.sidebar.markdown("---")
 
 st.sidebar.write(
@@ -70,7 +69,6 @@ st.sidebar.caption(
 
 # ============================================================
 # HELPER FUNCTION
-# USED TO CHECK WHETHER A SKU MAY RUN OUT WITHIN 12 MONTHS
 # ============================================================
 
 def calculate_sku_projection(selected_sku):
@@ -97,11 +95,9 @@ def calculate_sku_projection(selected_sku):
         )
     ].copy()
 
-    # Check that we have enough data
     if selected_sales.empty or selected_inventory.empty:
         return None
 
-    # Combine warehouse sales
     monthly_sales = (
         selected_sales
         .groupby(
@@ -115,7 +111,6 @@ def calculate_sku_projection(selected_sku):
     if monthly_sales.empty:
         return None
 
-    # 3-month moving average
     forecast_value = (
         monthly_sales
         .tail(3)["units_sold"]
@@ -126,28 +121,24 @@ def calculate_sku_projection(selected_sku):
         round(forecast_value)
     )
 
-    # Current inventory
     total_inventory = int(
         selected_inventory[
             "on_hand_qty"
         ].sum()
     )
 
-    # Inventory snapshot date
     inventory_date = (
         selected_inventory[
             "as_of_date"
         ].max()
     )
 
-    # Start from current inventory month
     projection_start = (
         inventory_date
         .to_period("M")
         .to_timestamp()
     )
 
-    # Project next 12 months
     future_months = pd.date_range(
         start=projection_start,
         periods=12,
@@ -211,11 +202,8 @@ def calculate_sku_projection(selected_sku):
     ]
 
     if shortage_rows.empty:
-
         first_shortage_month = None
-
     else:
-
         first_shortage_month = (
             shortage_rows
             .iloc[0]["Month Date"]
@@ -234,6 +222,18 @@ def calculate_sku_projection(selected_sku):
 
 if page == "Executive Dashboard":
 
+    latest_sales_month = sales[
+        "month"
+    ].max()
+
+    current_year = latest_sales_month.year
+    current_month_number = latest_sales_month.month
+    previous_year = current_year - 1
+
+    data_through = latest_sales_month.strftime(
+        "%b %Y"
+    )
+
     st.title(
         "Executive Inventory & Procurement Dashboard"
     )
@@ -243,24 +243,17 @@ if page == "Executive Dashboard":
         "purchase orders and stock risk."
     )
 
+    st.caption(
+        f"Data through {data_through}"
+    )
+
     st.markdown("---")
 
 
     # --------------------------------------------------------
-    # SALES PERIOD
+    # CURRENT YTD SALES
     # --------------------------------------------------------
 
-    latest_sales_month = sales[
-        "month"
-    ].max()
-
-    current_year = latest_sales_month.year
-    current_month_number = latest_sales_month.month
-
-    previous_year = current_year - 1
-
-
-    # Current YTD sales
     current_ytd_sales = sales[
         (
             sales["month"].dt.year
@@ -274,7 +267,6 @@ if page == "Executive Dashboard":
     ].copy()
 
 
-    # Previous year same period
     previous_ytd_sales = sales[
         (
             sales["month"].dt.year
@@ -302,7 +294,6 @@ if page == "Executive Dashboard":
     )
 
 
-    # YoY percentage
     if previous_ytd_units > 0:
 
         yoy_units_change = (
@@ -419,6 +410,15 @@ if page == "Executive Dashboard":
     )
 
 
+    delayed_po_count = len(
+        open_purchase_orders[
+            open_purchase_orders[
+                "status"
+            ] == "delayed"
+        ]
+    )
+
+
     # --------------------------------------------------------
     # TOP SELLING SKU
     # --------------------------------------------------------
@@ -509,12 +509,105 @@ if page == "Executive Dashboard":
     )
 
 
+    # ========================================================
+    # NEW - BUSINESS HEALTH SUMMARY
+    # ========================================================
+
+    st.subheader(
+        "Business Health"
+    )
+
+    health1, health2, health3 = st.columns(3)
+
+
+    # Sales health
+    with health1:
+
+        if yoy_units_change > 0:
+
+            st.success(
+                f"Sales Performance: Growing\n\n"
+                f"{yoy_units_change:+.1f}% vs {previous_year}"
+            )
+
+        elif yoy_units_change < 0:
+
+            st.error(
+                f"Sales Performance: Declining\n\n"
+                f"{yoy_units_change:+.1f}% vs {previous_year}"
+            )
+
+        else:
+
+            st.info(
+                "Sales Performance: Stable"
+            )
+
+
+    # Inventory risk
+    with health2:
+
+        risk_percentage = (
+            risk_count
+            / len(products)
+        ) * 100
+
+        if risk_percentage >= 50:
+
+            st.error(
+                f"Inventory Risk: High Attention\n\n"
+                f"{risk_count} products at risk"
+            )
+
+        elif risk_percentage >= 20:
+
+            st.warning(
+                f"Inventory Risk: Monitor\n\n"
+                f"{risk_count} products at risk"
+            )
+
+        else:
+
+            st.success(
+                f"Inventory Risk: Healthy\n\n"
+                f"{risk_count} products at risk"
+            )
+
+
+    # Purchase order health
+    with health3:
+
+        if delayed_po_count == 0:
+
+            st.success(
+                "Purchase Orders: Healthy\n\n"
+                "No delayed POs"
+            )
+
+        elif delayed_po_count <= 5:
+
+            st.warning(
+                f"Purchase Orders: Monitor\n\n"
+                f"{delayed_po_count} delayed POs"
+            )
+
+        else:
+
+            st.error(
+                f"Purchase Orders: Attention Needed\n\n"
+                f"{delayed_po_count} delayed POs"
+            )
+
+
+    st.markdown("---")
+
+
     # --------------------------------------------------------
-    # MANAGEMENT SUMMARY CARDS
+    # MANAGEMENT SUMMARY
     # --------------------------------------------------------
 
     st.subheader(
-        "Management Summary"
+        "Key Business Indicators"
     )
 
 
@@ -533,16 +626,24 @@ if page == "Executive Dashboard":
     with col2:
 
         st.metric(
-            "Inventory Value at Cost",
+            "Inventory Value",
             f"${total_inventory_value:,.0f}"
+        )
+
+        st.caption(
+            "Based on unit cost"
         )
 
 
     with col3:
 
         st.metric(
-            "Open PO Value at Cost",
+            "Open PO Value",
             f"${total_open_po_value:,.0f}"
+        )
+
+        st.caption(
+            "Based on unit cost"
         )
 
 
@@ -572,8 +673,12 @@ if page == "Executive Dashboard":
     with col6:
 
         st.metric(
-            "SKUs at 12-Month Risk",
+            "Products Requiring Attention",
             risk_count
+        )
+
+        st.caption(
+            "Projected shortage within 12 months"
         )
 
 
@@ -770,14 +875,6 @@ if page == "Executive Dashboard":
 
     with col8:
 
-        delayed_po_count = len(
-            open_purchase_orders[
-                open_purchase_orders[
-                    "status"
-                ] == "delayed"
-            ]
-        )
-
         st.metric(
             "Delayed Purchase Orders",
             delayed_po_count
@@ -789,21 +886,21 @@ if page == "Executive Dashboard":
     # --------------------------------------------------------
 
     st.subheader(
-        "SKUs Requiring Attention"
+        "Products Requiring Attention"
     )
 
 
     if risk_df.empty:
 
         st.success(
-            "No SKU is projected to run out "
+            "No product is projected to run out "
             "within the next 12 months."
         )
 
     else:
 
         st.warning(
-            f"{risk_count} SKU(s) are projected "
+            f"{risk_count} product(s) are projected "
             "to run out within the next 12 months."
         )
 
@@ -823,13 +920,7 @@ if page == "Executive Dashboard":
         )
 
 
-    # --------------------------------------------------------
-    # DATA LIMITATION MESSAGE
-    # --------------------------------------------------------
-
     st.info(
-        "This version of the management dashboard uses "
-        "the data currently available in the project. "
         "Revenue, profit, break-even and customer-level "
         "analysis will be added after the dataset is "
         "expanded with selling prices, customer data "
@@ -1463,5 +1554,3 @@ elif page == "SKU Analysis":
             "months of forecast demand, rounded up "
             "to the product pack size."
         )
-
-        
