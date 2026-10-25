@@ -369,36 +369,10 @@ if page == "Executive Dashboard":
     ].copy()
 
 
-    open_purchase_orders = (
-        open_purchase_orders.merge(
-            products[
-                [
-                    "sku",
-                    "unit_cost"
-                ]
-            ],
-            on="sku",
-            how="left"
-        )
-    )
-
-
-    open_purchase_orders[
-        "po_value"
-    ] = (
-        open_purchase_orders[
-            "quantity"
-        ]
-        *
-        open_purchase_orders[
-            "unit_cost"
-        ]
-    )
-
-
+    # New dataset already contains total_cost
     total_open_po_value = (
         open_purchase_orders[
-            "po_value"
+            "total_cost"
         ].sum()
     )
 
@@ -510,7 +484,7 @@ if page == "Executive Dashboard":
 
 
     # ========================================================
-    # NEW - BUSINESS HEALTH SUMMARY
+    # BUSINESS HEALTH SUMMARY
     # ========================================================
 
     st.subheader(
@@ -643,7 +617,7 @@ if page == "Executive Dashboard":
         )
 
         st.caption(
-            "Based on unit cost"
+            "Based on PO total cost"
         )
 
 
@@ -922,9 +896,7 @@ if page == "Executive Dashboard":
 
     st.info(
         "Revenue, profit, break-even and customer-level "
-        "analysis will be added after the dataset is "
-        "expanded with selling prices, customer data "
-        "and operating cost information."
+        "analysis can be added using the expanded dataset."
     )
 
 
