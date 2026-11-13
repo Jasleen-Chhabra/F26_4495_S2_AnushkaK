@@ -68,7 +68,30 @@ previous_year = current_year - 1
 
 
 # ============================================================
-# HELPER FUNCTION - SKU PROJECTION
+# SUPPLIER RISK FUNCTION
+# TODAY'S NOV 12 UPDATE
+# ============================================================
+
+def get_supplier_risk(on_time_rate, delayed_count):
+
+    if (
+        on_time_rate < 70
+        or delayed_count >= 5
+    ):
+        return "High Risk"
+
+    elif (
+        on_time_rate < 85
+        or delayed_count >= 2
+    ):
+        return "Medium Risk"
+
+    else:
+        return "Low Risk"
+
+
+# ============================================================
+# SKU PROJECTION FUNCTION
 # ============================================================
 
 def calculate_sku_projection(
@@ -127,7 +150,8 @@ def calculate_sku_projection(
         base_forecast
         *
         (
-            1 +
+            1
+            +
             demand_increase_pct / 100
         )
     )
@@ -188,7 +212,8 @@ def calculate_sku_projection(
     for month in future_months:
 
         month_end = (
-            month +
+            month
+            +
             pd.offsets.MonthEnd(1)
         )
 
@@ -207,7 +232,7 @@ def calculate_sku_projection(
             "quantity"
         ].sum()
 
-        closing = (
+        closing_inventory = (
             opening_inventory
             +
             int(incoming)
@@ -217,22 +242,29 @@ def calculate_sku_projection(
 
         rows.append(
             {
-                "Month Date": month,
-                "Month": month.strftime(
-                    "%b %Y"
-                ),
+                "Month Date":
+                    month,
+
+                "Month":
+                    month.strftime(
+                        "%b %Y"
+                    ),
+
                 "Opening Inventory":
                     opening_inventory,
+
                 "Incoming":
                     int(incoming),
+
                 "Forecast Demand":
                     forecast_demand,
+
                 "Closing Inventory":
-                    closing
+                    closing_inventory
             }
         )
 
-        opening_inventory = closing
+        opening_inventory = closing_inventory
 
     projection = pd.DataFrame(
         rows
@@ -318,11 +350,15 @@ def calculate_reorder(
         1
     )
 
+    raw_quantity = (
+        forecast_value
+        *
+        3
+    )
+
     order_quantity = (
         math.ceil(
-            (
-                forecast_value * 3
-            )
+            raw_quantity
             /
             pack_size
         )
@@ -386,6 +422,7 @@ current_ytd_revenue = (
         "revenue"
     ].sum()
 )
+
 
 previous_ytd_revenue = (
     previous_ytd_sales[
@@ -505,7 +542,7 @@ total_inventory_value = (
 
 
 # ============================================================
-# PURCHASE ORDERS
+# OPEN PURCHASE ORDERS
 # ============================================================
 
 open_purchase_orders = (
@@ -583,10 +620,8 @@ risk_rows = []
 
 for sku in products["sku"]:
 
-    result = (
-        calculate_sku_projection(
-            sku
-        )
+    result = calculate_sku_projection(
+        sku
     )
 
     if (
@@ -596,7 +631,6 @@ for sku in products["sku"]:
             "shortage_month"
         ] is None
     ):
-
         continue
 
     product_row = products[
@@ -604,7 +638,6 @@ for sku in products["sku"]:
             "sku"
         ] == sku
     ].iloc[0]
-
 
     reorder = calculate_reorder(
         product_row,
@@ -616,7 +649,6 @@ for sku in products["sku"]:
         ]
     )
 
-
     days_to_shortage = (
         result[
             "shortage_month"
@@ -627,23 +659,15 @@ for sku in products["sku"]:
         )
     ).days
 
-
     lead_time = int(
         product_row[
             "lead_time_days"
         ]
     )
 
+    if days_to_shortage <= lead_time:
 
-    if (
-        days_to_shortage
-        <=
-        lead_time
-    ):
-
-        urgency = (
-            "Immediate Action"
-        )
+        urgency = "Immediate Action"
 
     elif (
         days_to_shortage
@@ -651,16 +675,11 @@ for sku in products["sku"]:
         lead_time + 30
     ):
 
-        urgency = (
-            "Review Soon"
-        )
+        urgency = "Review Soon"
 
     else:
 
-        urgency = (
-            "Monitor"
-        )
-
+        urgency = "Monitor"
 
     risk_rows.append(
         {
@@ -754,8 +773,7 @@ for supplier in sorted(
         .copy()
     )
 
-
-    received = (
+    received_orders = (
         supplier_orders[
             supplier_orders[
                 "status"
@@ -765,7 +783,6 @@ for supplier in sorted(
         ]
         .copy()
     )
-
 
     open_orders = (
         supplier_orders[
@@ -782,7 +799,6 @@ for supplier in sorted(
         .copy()
     )
 
-
     delayed_count = len(
         open_orders[
             open_orders[
@@ -793,41 +809,45 @@ for supplier in sorted(
         ]
     )
 
+    valid_received = (
+        received_orders[
+            received_orders[
+                "actual_arrival_date"
+            ].notna()
+            &
+            received_orders[
+                "expected_arrival_date"
+            ].notna()
+        ]
+        .copy()
+    )
 
-    valid = received[
-        received[
-            "actual_arrival_date"
-        ].notna()
-        &
-        received[
-            "expected_arrival_date"
-        ].notna()
-    ].copy()
+    if not valid_received.empty:
 
-
-    if not valid.empty:
+        on_time_count = (
+            valid_received[
+                "actual_arrival_date"
+            ]
+            <=
+            valid_received[
+                "expected_arrival_date"
+            ]
+        ).sum()
 
         on_time_rate = (
-            (
-                valid[
-                    "actual_arrival_date"
-                ]
-                <=
-                valid[
-                    "expected_arrival_date"
-                ]
-            ).sum()
+            on_time_count
             /
-            len(valid)
+            len(
+                valid_received
+            )
         ) * 100
 
-
-        avg_lead = (
-            valid[
+        avg_lead_time = (
+            valid_received[
                 "actual_arrival_date"
             ]
             -
-            valid[
+            valid_received[
                 "order_date"
             ]
         ).dt.days.mean()
@@ -835,35 +855,12 @@ for supplier in sorted(
     else:
 
         on_time_rate = 0
-        avg_lead = 0
+        avg_lead_time = 0
 
-
-    if (
-        on_time_rate < 70
-        or
-        delayed_count >= 5
-    ):
-
-        risk = (
-            "High Risk"
-        )
-
-    elif (
-        on_time_rate < 85
-        or
-        delayed_count >= 2
-    ):
-
-        risk = (
-            "Medium Risk"
-        )
-
-    else:
-
-        risk = (
-            "Low Risk"
-        )
-
+    supplier_risk = get_supplier_risk(
+        on_time_rate,
+        delayed_count
+    )
 
     supplier_rows.append(
         {
@@ -891,11 +888,11 @@ for supplier in sorted(
 
             "Avg Actual Lead Time":
                 round(
-                    avg_lead,
+                    avg_lead_time,
                     1
                 )
                 if pd.notna(
-                    avg_lead
+                    avg_lead_time
                 )
                 else 0,
 
@@ -908,20 +905,52 @@ for supplier in sorted(
                 ),
 
             "Supplier Risk":
-                risk
+                supplier_risk
         }
     )
 
 
-supplier_performance = (
-    pd.DataFrame(
-        supplier_rows
-    )
+supplier_performance = pd.DataFrame(
+    supplier_rows
 )
 
 
+if not supplier_performance.empty:
+
+    risk_order = pd.CategoricalDtype(
+        categories=[
+            "High Risk",
+            "Medium Risk",
+            "Low Risk"
+        ],
+        ordered=True
+    )
+
+    supplier_performance[
+        "Supplier Risk"
+    ] = supplier_performance[
+        "Supplier Risk"
+    ].astype(
+        risk_order
+    )
+
+    supplier_performance = (
+        supplier_performance
+        .sort_values(
+            [
+                "Supplier Risk",
+                "On-Time %"
+            ],
+            ascending=[
+                True,
+                True
+            ]
+        )
+    )
+
+
 # ============================================================
-# FORECAST EVALUATION DATA
+# FORECAST EVALUATION
 # ============================================================
 
 forecast_rows = []
@@ -949,13 +978,8 @@ for sku in products["sku"]:
         )
     )
 
-
-    if len(
-        sku_sales
-    ) < 4:
-
+    if len(sku_sales) < 4:
         continue
-
 
     sku_sales[
         "Forecast"
@@ -968,7 +992,6 @@ for sku in products["sku"]:
         .mean()
     )
 
-
     eval_rows = (
         sku_sales[
             sku_sales[
@@ -977,7 +1000,6 @@ for sku in products["sku"]:
         ]
         .copy()
     )
-
 
     eval_rows[
         "Absolute Error"
@@ -990,7 +1012,6 @@ for sku in products["sku"]:
             "Forecast"
         ]
     ).abs()
-
 
     eval_rows[
         "APE"
@@ -1006,7 +1027,6 @@ for sku in products["sku"]:
             pd.NA
         )
     ) * 100
-
 
     for _, row in (
         eval_rows
@@ -1047,10 +1067,8 @@ for sku in products["sku"]:
         )
 
 
-forecast_evaluation_df = (
-    pd.DataFrame(
-        forecast_rows
-    )
+forecast_evaluation_df = pd.DataFrame(
+    forecast_rows
 )
 
 
@@ -1061,7 +1079,6 @@ if not forecast_evaluation_df.empty:
             "Absolute Error"
         ].mean()
     )
-
 
     overall_mape = (
         pd.to_numeric(
@@ -1148,17 +1165,12 @@ if page == "Overview":
         "Executive Business Overview"
     )
 
-
     st.info(
         "Academic project note: this application "
         "uses synthetic data for testing."
     )
 
-
-    c1, c2, c3, c4 = (
-        st.columns(4)
-    )
-
+    c1, c2, c3, c4 = st.columns(4)
 
     with c1:
 
@@ -1168,7 +1180,6 @@ if page == "Overview":
             f"{yoy_revenue_change:+.1f}% vs last year"
         )
 
-
     with c2:
 
         st.metric(
@@ -1176,14 +1187,12 @@ if page == "Overview":
             f"${estimated_gross_profit:,.0f}"
         )
 
-
     with c3:
 
         st.metric(
             "Inventory Value",
             f"${total_inventory_value:,.0f}"
         )
-
 
     with c4:
 
@@ -1194,11 +1203,9 @@ if page == "Overview":
             )
         )
 
-
     st.subheader(
         "Revenue Trend"
     )
-
 
     trend = sales[
         sales[
@@ -1211,7 +1218,6 @@ if page == "Overview":
         )
     ].copy()
 
-
     trend[
         "Year"
     ] = (
@@ -1222,7 +1228,6 @@ if page == "Overview":
         )
     )
 
-
     trend[
         "Month"
     ] = (
@@ -1232,7 +1237,6 @@ if page == "Overview":
             "%b"
         )
     )
-
 
     trend = (
         trend
@@ -1248,7 +1252,6 @@ if page == "Overview":
         .sum()
     )
 
-
     chart = px.line(
         trend,
         x="Month",
@@ -1258,23 +1261,20 @@ if page == "Overview":
         title="Monthly Revenue"
     )
 
-
     st.plotly_chart(
         chart,
         use_container_width=True
     )
 
-
     st.subheader(
         "Products Needing Attention"
     )
 
-
     if risk_df.empty:
 
         st.success(
-            "No projected shortages "
-            "in the next 12 months."
+            "No projected shortages in "
+            "the next 12 months."
         )
 
     else:
@@ -1287,7 +1287,7 @@ if page == "Overview":
 
 
 # ============================================================
-# PAGE 2 - SALES
+# PAGE 2 - SALES & FINANCIALS
 # ============================================================
 
 elif page == "Sales & Financials":
@@ -1296,11 +1296,7 @@ elif page == "Sales & Financials":
         "Sales & Financial Performance"
     )
 
-
-    c1, c2, c3 = (
-        st.columns(3)
-    )
-
+    c1, c2, c3 = st.columns(3)
 
     with c1:
 
@@ -1309,14 +1305,12 @@ elif page == "Sales & Financials":
             f"${current_ytd_revenue:,.0f}"
         )
 
-
     with c2:
 
         st.metric(
             "Estimated Gross Profit",
             f"${estimated_gross_profit:,.0f}"
         )
-
 
     with c3:
 
@@ -1325,18 +1319,15 @@ elif page == "Sales & Financials":
             f"{gross_margin:.1f}%"
         )
 
-
     st.info(
         "Gross profit is an estimate based "
         "on revenue minus product unit cost. "
         "Operating expenses are not included."
     )
 
-
     st.subheader(
         "Top Products by Revenue"
     )
-
 
     chart = px.bar(
         top_by_revenue.head(10),
@@ -1345,7 +1336,6 @@ elif page == "Sales & Financials":
         title="Top 10 Products by Revenue"
     )
 
-
     st.plotly_chart(
         chart,
         use_container_width=True
@@ -1353,7 +1343,7 @@ elif page == "Sales & Financials":
 
 
 # ============================================================
-# PAGE 3 - INVENTORY
+# PAGE 3 - INVENTORY & PROCUREMENT
 # ============================================================
 
 elif page == "Inventory & Procurement":
@@ -1362,11 +1352,7 @@ elif page == "Inventory & Procurement":
         "Inventory & Procurement"
     )
 
-
-    c1, c2, c3 = (
-        st.columns(3)
-    )
-
+    c1, c2, c3 = st.columns(3)
 
     with c1:
 
@@ -1375,14 +1361,12 @@ elif page == "Inventory & Procurement":
             f"${total_inventory_value:,.0f}"
         )
 
-
     with c2:
 
         st.metric(
             "Open PO Value",
             f"${total_open_po_value:,.0f}"
         )
-
 
     with c3:
 
@@ -1391,11 +1375,9 @@ elif page == "Inventory & Procurement":
             delayed_po_count
         )
 
-
     st.subheader(
         "Open Purchase Orders"
     )
-
 
     st.dataframe(
         open_purchase_orders,
@@ -1403,11 +1385,9 @@ elif page == "Inventory & Procurement":
         hide_index=True
     )
 
-
     st.subheader(
         "Products Needing Attention"
     )
-
 
     if risk_df.empty:
 
@@ -1434,42 +1414,170 @@ elif page == "Supplier Performance":
         "Supplier Performance"
     )
 
-
-    st.dataframe(
-        supplier_performance,
-        use_container_width=True,
-        hide_index=True
+    st.write(
+        "This page reviews supplier reliability using "
+        "delivery performance and delayed purchase orders."
     )
 
+    # --------------------------------------------------------
+    # TODAY'S NEW EXPLANATION
+    # --------------------------------------------------------
 
-    if not supplier_performance.empty:
+    st.subheader(
+        "Supplier Risk Rules"
+    )
 
-        summary = (
+    st.info(
+        "Low Risk: at least 85% on-time delivery and fewer "
+        "than 2 delayed open purchase orders.\n\n"
+        "Medium Risk: below 85% on-time delivery or "
+        "2 to 4 delayed open purchase orders.\n\n"
+        "High Risk: below 70% on-time delivery or "
+        "5 or more delayed open purchase orders."
+    )
+
+    if supplier_performance.empty:
+
+        st.info(
+            "No supplier data is available."
+        )
+
+    else:
+
+        high_risk_count = len(
+            supplier_performance[
+                supplier_performance[
+                    "Supplier Risk"
+                ]
+                ==
+                "High Risk"
+            ]
+        )
+
+        medium_risk_count = len(
+            supplier_performance[
+                supplier_performance[
+                    "Supplier Risk"
+                ]
+                ==
+                "Medium Risk"
+            ]
+        )
+
+        low_risk_count = len(
+            supplier_performance[
+                supplier_performance[
+                    "Supplier Risk"
+                ]
+                ==
+                "Low Risk"
+            ]
+        )
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+
+            st.metric(
+                "High-Risk Suppliers",
+                high_risk_count
+            )
+
+        with c2:
+
+            st.metric(
+                "Medium-Risk Suppliers",
+                medium_risk_count
+            )
+
+        with c3:
+
+            st.metric(
+                "Low-Risk Suppliers",
+                low_risk_count
+            )
+
+        st.subheader(
+            "Supplier Scorecard"
+        )
+
+        st.dataframe(
+            supplier_performance,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        risk_summary = (
             supplier_performance[
                 "Supplier Risk"
             ]
             .value_counts()
+            .reindex(
+                [
+                    "High Risk",
+                    "Medium Risk",
+                    "Low Risk"
+                ],
+                fill_value=0
+            )
             .reset_index()
         )
 
-
-        summary.columns = [
+        risk_summary.columns = [
             "Risk",
             "Suppliers"
         ]
 
-
-        chart = px.bar(
-            summary,
-            x="Risk",
-            y="Suppliers",
-            title="Supplier Risk Summary"
+        st.subheader(
+            "Supplier Risk Summary"
         )
 
+        chart = px.bar(
+            risk_summary,
+            x="Risk",
+            y="Suppliers",
+            title="Number of Suppliers by Risk Level"
+        )
 
         st.plotly_chart(
             chart,
             use_container_width=True
+        )
+
+        st.subheader(
+            "Procurement Interpretation"
+        )
+
+        if high_risk_count > 0:
+
+            st.warning(
+                f"{high_risk_count} supplier(s) are currently "
+                "classified as high risk. These suppliers should "
+                "be reviewed first because their delivery performance "
+                "or delayed purchase orders may increase inventory risk."
+            )
+
+        elif medium_risk_count > 0:
+
+            st.info(
+                "There are no high-risk suppliers, but some suppliers "
+                "are currently classified as medium risk and should "
+                "continue to be monitored."
+            )
+
+        else:
+
+            st.success(
+                "All suppliers are currently classified as low risk."
+            )
+
+        st.download_button(
+            "Download Supplier Scorecard",
+            data=supplier_performance.to_csv(
+                index=False
+            ),
+            file_name="supplier_scorecard.csv",
+            mime="text/csv"
         )
 
 
@@ -1483,19 +1591,16 @@ elif page == "Forecast Evaluation":
         "Forecast Evaluation"
     )
 
-
     st.write(
         "This page reviews how the three-month "
         "moving-average forecast compares with "
         "historical sales."
     )
 
-
     st.caption(
         "The evaluation uses the most recent six "
         "available forecast periods for each SKU."
     )
-
 
     if forecast_evaluation_df.empty:
 
@@ -1538,11 +1643,7 @@ elif page == "Forecast Evaluation":
                 "Needs Review"
             )
 
-
-        c1, c2, c3 = (
-            st.columns(3)
-        )
-
+        c1, c2, c3 = st.columns(3)
 
         with c1:
 
@@ -1550,7 +1651,6 @@ elif page == "Forecast Evaluation":
                 "Overall MAE",
                 f"{overall_mae:.1f} units"
             )
-
 
         with c2:
 
@@ -1570,7 +1670,6 @@ elif page == "Forecast Evaluation":
                     f"{overall_mape:.1f}%"
                 )
 
-
         with c3:
 
             st.metric(
@@ -1578,13 +1677,11 @@ elif page == "Forecast Evaluation":
                 overall_status
             )
 
-
         st.info(
             "MAE shows the average difference "
             "between forecast and actual demand. "
             "MAPE shows the average percentage error."
         )
-
 
         selected_eval_sku = (
             st.selectbox(
@@ -1597,7 +1694,6 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         sku_eval = (
             forecast_evaluation_df[
                 forecast_evaluation_df[
@@ -1609,7 +1705,6 @@ elif page == "Forecast Evaluation":
             .copy()
         )
 
-
         sku_eval[
             "Month Label"
         ] = (
@@ -1620,13 +1715,11 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         sku_mae = (
             sku_eval[
                 "Absolute Error"
             ].mean()
         )
-
 
         sku_mape = (
             pd.to_numeric(
@@ -1638,7 +1731,6 @@ elif page == "Forecast Evaluation":
             .dropna()
             .mean()
         )
-
 
         if pd.isna(
             sku_mape
@@ -1672,11 +1764,7 @@ elif page == "Forecast Evaluation":
                 "Needs Review"
             )
 
-
-        c1, c2, c3 = (
-            st.columns(3)
-        )
-
+        c1, c2, c3 = st.columns(3)
 
         with c1:
 
@@ -1684,7 +1772,6 @@ elif page == "Forecast Evaluation":
                 "SKU MAE",
                 f"{sku_mae:.1f} units"
             )
-
 
         with c2:
 
@@ -1704,14 +1791,12 @@ elif page == "Forecast Evaluation":
                     f"{sku_mape:.1f}%"
                 )
 
-
         with c3:
 
             st.metric(
                 "Accuracy Status",
                 sku_status
             )
-
 
         comparison = (
             sku_eval[
@@ -1728,7 +1813,6 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         chart = px.line(
             comparison,
             x="Month Label",
@@ -1741,12 +1825,10 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         st.plotly_chart(
             chart,
             use_container_width=True
         )
-
 
         display_eval = (
             sku_eval[
@@ -1761,7 +1843,6 @@ elif page == "Forecast Evaluation":
             .copy()
         )
 
-
         display_eval[
             "Forecast"
         ] = (
@@ -1770,7 +1851,6 @@ elif page == "Forecast Evaluation":
             ].round(1)
         )
 
-
         display_eval[
             "Absolute Error"
         ] = (
@@ -1778,7 +1858,6 @@ elif page == "Forecast Evaluation":
                 "Absolute Error"
             ].round(1)
         )
-
 
         display_eval[
             "APE"
@@ -1791,7 +1870,6 @@ elif page == "Forecast Evaluation":
             )
             .round(1)
         )
-
 
         display_eval = (
             display_eval
@@ -1806,13 +1884,11 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         st.dataframe(
             display_eval,
             use_container_width=True,
             hide_index=True
         )
-
 
         st.download_button(
             "Download Forecast Evaluation",
@@ -1826,24 +1902,19 @@ elif page == "Forecast Evaluation":
             mime="text/csv"
         )
 
-
         st.subheader(
             "Evaluation Notes"
         )
 
-
         st.write(
-            "The three-month moving average "
-            "is the baseline forecasting method "
-            "for this project."
+            "The three-month moving average is the "
+            "baseline forecasting method for this project."
         )
 
-
         st.write(
-            "The results show that forecast "
-            "accuracy can vary between products. "
-            "Another forecasting method may be "
-            "compared with this baseline later."
+            "Forecast accuracy can vary between products, "
+            "so the results are reviewed at both the overall "
+            "and individual SKU level."
         )
 
 
@@ -1857,7 +1928,6 @@ elif page == "SKU Analysis":
         "Product / SKU Analysis"
     )
 
-
     selected_sku = (
         st.selectbox(
             "Choose Product SKU",
@@ -1869,7 +1939,6 @@ elif page == "SKU Analysis":
         )
     )
 
-
     product = products[
         products[
             "sku"
@@ -1878,18 +1947,11 @@ elif page == "SKU Analysis":
         selected_sku
     ].iloc[0]
 
-
-    result = (
-        calculate_sku_projection(
-            selected_sku
-        )
+    result = calculate_sku_projection(
+        selected_sku
     )
 
-
-    c1, c2, c3, c4 = (
-        st.columns(4)
-    )
-
+    c1, c2, c3, c4 = st.columns(4)
 
     with c1:
 
@@ -1900,7 +1962,6 @@ elif page == "SKU Analysis":
             ]
         )
 
-
     with c2:
 
         st.metric(
@@ -1910,14 +1971,12 @@ elif page == "SKU Analysis":
             ]
         )
 
-
     with c3:
 
         st.metric(
             "Lead Time",
             f"{int(product['lead_time_days'])} days"
         )
-
 
     with c4:
 
@@ -1930,12 +1989,11 @@ elif page == "SKU Analysis":
             )
         )
 
-
     if result is None:
 
         st.warning(
-            "Projection could not be "
-            "calculated for this SKU."
+            "Projection could not be calculated "
+            "for this SKU."
         )
 
     else:
@@ -1945,12 +2003,10 @@ elif page == "SKU Analysis":
             f"{result['current_inventory']:,} units"
         )
 
-
         st.metric(
             "3-Month Moving Average",
             f"{result['base_forecast']:.0f} units/month"
         )
-
 
         st.dataframe(
             result[
@@ -1959,7 +2015,6 @@ elif page == "SKU Analysis":
             use_container_width=True,
             hide_index=True
         )
-
 
         chart = px.line(
             result[
@@ -1971,25 +2026,20 @@ elif page == "SKU Analysis":
             title="Projected Inventory"
         )
 
-
         st.plotly_chart(
             chart,
             use_container_width=True
         )
 
-
-        reorder = (
-            calculate_reorder(
-                product,
-                result[
-                    "base_forecast"
-                ],
-                result[
-                    "shortage_month"
-                ]
-            )
+        reorder = calculate_reorder(
+            product,
+            result[
+                "base_forecast"
+            ],
+            result[
+                "shortage_month"
+            ]
         )
-
 
         if reorder:
 
@@ -1998,12 +2048,10 @@ elif page == "SKU Analysis":
                 f"{result['shortage_month'].strftime('%b %Y')}"
             )
 
-
             st.write(
                 "Suggested order date: "
                 f"{reorder['order_date'].strftime('%d %b %Y')}"
             )
-
 
             st.write(
                 "Suggested order quantity: "
@@ -2013,8 +2061,7 @@ elif page == "SKU Analysis":
         else:
 
             st.success(
-                "No immediate reorder "
-                "is recommended."
+                "No immediate reorder is recommended."
             )
 
 
@@ -2028,7 +2075,6 @@ elif page == "Scenario Planner":
         "What-If Scenario Planner"
     )
 
-
     selected_sku = (
         st.selectbox(
             "Choose Product SKU",
@@ -2041,7 +2087,6 @@ elif page == "Scenario Planner":
         )
     )
 
-
     product = products[
         products[
             "sku"
@@ -2050,11 +2095,7 @@ elif page == "Scenario Planner":
         selected_sku
     ].iloc[0]
 
-
-    c1, c2 = (
-        st.columns(2)
-    )
-
+    c1, c2 = st.columns(2)
 
     with c1:
 
@@ -2073,7 +2114,6 @@ elif page == "Scenario Planner":
             )
         )
 
-
     with c2:
 
         shipment_delay = (
@@ -2091,22 +2131,15 @@ elif page == "Scenario Planner":
             )
         )
 
-
-    base = (
-        calculate_sku_projection(
-            selected_sku
-        )
+    base = calculate_sku_projection(
+        selected_sku
     )
 
-
-    scenario = (
-        calculate_sku_projection(
-            selected_sku,
-            demand_increase,
-            shipment_delay
-        )
+    scenario = calculate_sku_projection(
+        selected_sku,
+        demand_increase,
+        shipment_delay
     )
-
 
     if (
         base is None
@@ -2115,65 +2148,55 @@ elif page == "Scenario Planner":
     ):
 
         st.warning(
-            "Scenario results could not "
-            "be calculated for this SKU."
+            "Scenario results could not be calculated."
         )
 
     else:
 
-        base_reorder = (
-            calculate_reorder(
-                product,
-                base[
-                    "base_forecast"
-                ],
-                base[
-                    "shortage_month"
-                ]
-            )
+        base_reorder = calculate_reorder(
+            product,
+            base[
+                "base_forecast"
+            ],
+            base[
+                "shortage_month"
+            ]
         )
 
-
-        scenario_reorder = (
-            calculate_reorder(
-                product,
-                scenario[
-                    "adjusted_forecast"
-                ],
-                scenario[
-                    "shortage_month"
-                ]
-            )
+        scenario_reorder = calculate_reorder(
+            product,
+            scenario[
+                "adjusted_forecast"
+            ],
+            scenario[
+                "shortage_month"
+            ]
         )
 
+        comparison = pd.DataFrame(
+            {
+                "Month":
+                    base[
+                        "projection"
+                    ][
+                        "Month"
+                    ],
 
-        comparison = (
-            pd.DataFrame(
-                {
-                    "Month":
-                        base[
-                            "projection"
-                        ][
-                            "Month"
-                        ],
+                "Normal Projection":
+                    base[
+                        "projection"
+                    ][
+                        "Closing Inventory"
+                    ],
 
-                    "Normal Projection":
-                        base[
-                            "projection"
-                        ][
-                            "Closing Inventory"
-                        ],
-
-                    "Scenario Projection":
-                        scenario[
-                            "projection"
-                        ][
-                            "Closing Inventory"
-                        ]
-                }
-            )
+                "Scenario Projection":
+                    scenario[
+                        "projection"
+                    ][
+                        "Closing Inventory"
+                    ]
+            }
         )
-
 
         comparison_long = (
             comparison
@@ -2184,25 +2207,19 @@ elif page == "Scenario Planner":
             )
         )
 
-
         chart = px.line(
             comparison_long,
             x="Month",
             y="Closing Inventory",
             color="Projection",
             markers=True,
-            title=(
-                "Normal vs Scenario "
-                "Inventory Projection"
-            )
+            title="Normal vs Scenario Inventory Projection"
         )
-
 
         st.plotly_chart(
             chart,
             use_container_width=True
         )
-
 
         summary = pd.DataFrame(
             {
@@ -2281,7 +2298,6 @@ elif page == "Scenario Planner":
                 ]
             }
         )
-
 
         st.dataframe(
             summary,
