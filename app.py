@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import math
 
+from ui_theme import apply_theme
+
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -13,6 +15,8 @@ st.set_page_config(
     page_icon="📦",
     layout="wide"
 )
+
+apply_theme()
 
 
 # ============================================================
