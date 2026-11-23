@@ -20,6 +20,7 @@ stock and suggest when and how much to reorder.
 - Overview dashboard: revenue, estimated gross profit, inventory value, open PO value and products at risk
 - Sales & Financials, and Inventory & Procurement pages
 - Supplier Performance: on-time delivery, average lead time and delayed orders
+- Forecast Evaluation: compares the 3-month and 6-month moving-average forecasts using MAE and MAPE, overall and per SKU, with a CSV download
 - SKU Analysis: sales history, stock, incoming purchase orders, demand forecast (3-month moving average), 12-month inventory projection and reorder recommendation
 - Scenario Planner: higher demand and shipment delay what-if analysis
 
@@ -38,7 +39,7 @@ Requirements: Python 3.10 or newer, and Git.
 
 1. Clone the repository:
    `git clone https://github.com/Jasleen-Chhabra/F26_4495_S2_AnushkaK.git`
-2. Go to the application folder (the folder that contains `app.py` and `Data/`):
+2. Go to the application folder (the folder that contains `app.py`, `ui_theme.py` and `Data/`):
    `cd F26_4495_S2_AnushkaK/Implementation`
 3. (Optional) Create and activate a virtual environment:
    `python -m venv venv`, then `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux)
@@ -50,9 +51,9 @@ Requirements: Python 3.10 or newer, and Git.
 
 ## Folders
 - `ReportsAndDocuments/` - proposal, progress reports, mid-course and final reports
-- `Implementation/` - application code (Python, Streamlit) and data
+- `Implementation/` - application code (Python, Streamlit): `app.py`, `ui_theme.py` (colors, fonts and chart styling), `requirements.txt`, and `Data/`
 - `Misc/` - other files
 
 ## Status
-Mid-course stage (Oct 2026). Next: forecast evaluation, scenario and supplier
-analysis improvements, reorder logic and testing.
+Mid-course stage (Oct 2026). Forecast evaluation is implemented. Next: scenario
+and supplier analysis improvements, reorder logic and testing.
