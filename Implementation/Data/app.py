@@ -109,15 +109,11 @@ def calculate_sku_projection(
 
     selected_pos = purchase_orders[
         (
-            purchase_orders["sku"]
-            ==
-            selected_sku
+            purchase_orders["sku"] == selected_sku
         )
         &
         (
-            purchase_orders[
-                "status"
-            ].isin(
+            purchase_orders["status"].isin(
                 [
                     "ordered",
                     "in_transit",
@@ -864,7 +860,6 @@ supplier_performance = pd.DataFrame(
 
 # ============================================================
 # FORECAST EVALUATION
-# 3-MONTH VS 6-MONTH MOVING AVERAGE
 # ============================================================
 
 forecast_rows = []
@@ -898,7 +893,6 @@ for sku in products["sku"]:
 
         continue
 
-
     sku_sales[
         "Forecast 3M"
     ] = (
@@ -909,7 +903,6 @@ for sku in products["sku"]:
         .rolling(3)
         .mean()
     )
-
 
     sku_sales[
         "Forecast 6M"
@@ -922,7 +915,6 @@ for sku in products["sku"]:
         .mean()
     )
 
-
     evaluation_rows = (
         sku_sales[
             sku_sales[
@@ -931,7 +923,6 @@ for sku in products["sku"]:
         ]
         .copy()
     )
-
 
     evaluation_rows[
         "3M Absolute Error"
@@ -945,7 +936,6 @@ for sku in products["sku"]:
         ]
     ).abs()
 
-
     evaluation_rows[
         "6M Absolute Error"
     ] = (
@@ -957,7 +947,6 @@ for sku in products["sku"]:
             "Forecast 6M"
         ]
     ).abs()
-
 
     evaluation_rows[
         "3M APE"
@@ -974,7 +963,6 @@ for sku in products["sku"]:
         )
     ) * 100
 
-
     evaluation_rows[
         "6M APE"
     ] = (
@@ -990,7 +978,6 @@ for sku in products["sku"]:
         )
     ) * 100
 
-
     for _, row in (
         evaluation_rows
         .tail(6)
@@ -1000,18 +987,10 @@ for sku in products["sku"]:
         forecast_rows.append(
             {
                 "SKU": sku,
-                "Month": row[
-                    "month"
-                ],
-                "Actual": row[
-                    "units_sold"
-                ],
-                "Forecast 3M": row[
-                    "Forecast 3M"
-                ],
-                "Forecast 6M": row[
-                    "Forecast 6M"
-                ],
+                "Month": row["month"],
+                "Actual": row["units_sold"],
+                "Forecast 3M": row["Forecast 3M"],
+                "Forecast 6M": row["Forecast 6M"],
                 "3M Absolute Error": row[
                     "3M Absolute Error"
                 ],
@@ -1073,7 +1052,6 @@ else:
 
     overall_3m_mae = 0
     overall_6m_mae = 0
-
     overall_3m_mape = 0
     overall_6m_mape = 0
 
@@ -1146,15 +1124,12 @@ if page == "Overview":
         "Executive Business Overview"
     )
 
-
     st.info(
         "Academic project note: this application "
         "uses synthetic data for testing."
     )
 
-
     c1, c2, c3, c4 = st.columns(4)
-
 
     with c1:
 
@@ -1164,7 +1139,6 @@ if page == "Overview":
             f"{yoy_revenue_change:+.1f}% vs last year"
         )
 
-
     with c2:
 
         st.metric(
@@ -1172,14 +1146,12 @@ if page == "Overview":
             f"${estimated_gross_profit:,.0f}"
         )
 
-
     with c3:
 
         st.metric(
             "Inventory Value",
             f"${total_inventory_value:,.0f}"
         )
-
 
     with c4:
 
@@ -1190,11 +1162,9 @@ if page == "Overview":
             )
         )
 
-
     st.subheader(
         "Revenue Trend"
     )
-
 
     trend = sales[
         sales[
@@ -1207,7 +1177,6 @@ if page == "Overview":
         )
     ].copy()
 
-
     trend[
         "Year"
     ] = (
@@ -1218,7 +1187,6 @@ if page == "Overview":
         )
     )
 
-
     trend[
         "Month"
     ] = (
@@ -1228,7 +1196,6 @@ if page == "Overview":
             "%b"
         )
     )
-
 
     trend = (
         trend
@@ -1244,7 +1211,6 @@ if page == "Overview":
         .sum()
     )
 
-
     chart = px.line(
         trend,
         x="Month",
@@ -1254,17 +1220,14 @@ if page == "Overview":
         title="Monthly Revenue"
     )
 
-
     st.plotly_chart(
         chart,
         use_container_width=True
     )
 
-
     st.subheader(
         "Products Needing Attention"
     )
-
 
     if risk_df.empty:
 
@@ -1292,9 +1255,7 @@ elif page == "Sales & Financials":
         "Sales & Financial Performance"
     )
 
-
     c1, c2, c3 = st.columns(3)
-
 
     with c1:
 
@@ -1303,14 +1264,12 @@ elif page == "Sales & Financials":
             f"${current_ytd_revenue:,.0f}"
         )
 
-
     with c2:
 
         st.metric(
             "Estimated Gross Profit",
             f"${estimated_gross_profit:,.0f}"
         )
-
 
     with c3:
 
@@ -1319,18 +1278,15 @@ elif page == "Sales & Financials":
             f"{gross_margin:.1f}%"
         )
 
-
     st.info(
         "Gross profit is an estimate based "
         "on revenue minus product unit cost. "
         "Operating expenses are not included."
     )
 
-
     st.subheader(
         "Top Products by Revenue"
     )
-
 
     chart = px.bar(
         top_by_revenue.head(10),
@@ -1338,7 +1294,6 @@ elif page == "Sales & Financials":
         y="revenue",
         title="Top 10 Products by Revenue"
     )
-
 
     st.plotly_chart(
         chart,
@@ -1356,9 +1311,7 @@ elif page == "Inventory & Procurement":
         "Inventory & Procurement"
     )
 
-
     c1, c2, c3 = st.columns(3)
-
 
     with c1:
 
@@ -1367,14 +1320,12 @@ elif page == "Inventory & Procurement":
             f"${total_inventory_value:,.0f}"
         )
 
-
     with c2:
 
         st.metric(
             "Open PO Value",
             f"${total_open_po_value:,.0f}"
         )
-
 
     with c3:
 
@@ -1383,11 +1334,9 @@ elif page == "Inventory & Procurement":
             delayed_po_count
         )
 
-
     st.subheader(
         "Open Purchase Orders"
     )
-
 
     st.dataframe(
         open_purchase_orders,
@@ -1395,11 +1344,9 @@ elif page == "Inventory & Procurement":
         hide_index=True
     )
 
-
     st.subheader(
         "Products Needing Attention"
     )
-
 
     if risk_df.empty:
 
@@ -1426,12 +1373,10 @@ elif page == "Supplier Performance":
         "Supplier Performance"
     )
 
-
     st.write(
         "Supplier performance is reviewed using "
         "on-time delivery and delayed open orders."
     )
-
 
     st.info(
         "Low Risk: at least 85% on-time delivery and "
@@ -1441,7 +1386,6 @@ elif page == "Supplier Performance":
         "High Risk: below 70% on-time delivery or "
         "5 or more delayed open purchase orders."
     )
-
 
     if supplier_performance.empty:
 
@@ -1457,7 +1401,6 @@ elif page == "Supplier Performance":
             hide_index=True
         )
 
-
         risk_summary = (
             supplier_performance[
                 "Supplier Risk"
@@ -1466,12 +1409,10 @@ elif page == "Supplier Performance":
             .reset_index()
         )
 
-
         risk_summary.columns = [
             "Risk",
             "Suppliers"
         ]
-
 
         chart = px.bar(
             risk_summary,
@@ -1479,7 +1420,6 @@ elif page == "Supplier Performance":
             y="Suppliers",
             title="Supplier Risk Summary"
         )
-
 
         st.plotly_chart(
             chart,
@@ -1497,19 +1437,16 @@ elif page == "Forecast Evaluation":
         "Forecast Evaluation"
     )
 
-
     st.write(
         "This section compares the current three-month "
         "moving-average forecast with a six-month "
         "moving-average method."
     )
 
-
     st.caption(
         "The comparison uses the most recent six "
         "available evaluation periods for each SKU."
     )
-
 
     st.info(
         "This comparison checks whether the 3-month or 6-month "
@@ -1517,15 +1454,12 @@ elif page == "Forecast Evaluation":
         "Lower MAE and MAPE values indicate better forecast accuracy."
     )
 
-
-    # TODAY'S SMALL COMMIT
     st.caption(
         "The 3-month moving average is the baseline forecasting method "
         "used in this project. The 6-month moving average is included "
         "for comparison to evaluate whether a longer sales history "
         "improves forecast accuracy."
     )
-
 
     if forecast_evaluation_df.empty:
 
@@ -1540,9 +1474,7 @@ elif page == "Forecast Evaluation":
             "Overall Forecast Comparison"
         )
 
-
         c1, c2, c3, c4 = st.columns(4)
-
 
         with c1:
 
@@ -1551,14 +1483,12 @@ elif page == "Forecast Evaluation":
                 f"{overall_3m_mae:.1f} units"
             )
 
-
         with c2:
 
             st.metric(
                 "6-Month Forecast MAE",
                 f"{overall_6m_mae:.1f} units"
             )
-
 
         with c3:
 
@@ -1567,14 +1497,12 @@ elif page == "Forecast Evaluation":
                 f"{overall_3m_mape:.1f}%"
             )
 
-
         with c4:
 
             st.metric(
                 "6-Month Forecast MAPE",
                 f"{overall_6m_mape:.1f}%"
             )
-
 
         if (
             overall_3m_mape
@@ -1602,17 +1530,14 @@ elif page == "Forecast Evaluation":
                 "Both methods performed similarly"
             )
 
-
         st.success(
             f"Based on overall MAPE, the better-performing "
             f"method in this evaluation is: {overall_best}."
         )
 
-
         st.markdown(
             "---"
         )
-
 
         selected_eval_sku = (
             st.selectbox(
@@ -1625,7 +1550,6 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         sku_eval = (
             forecast_evaluation_df[
                 forecast_evaluation_df[
@@ -1637,7 +1561,6 @@ elif page == "Forecast Evaluation":
             .copy()
         )
 
-
         sku_eval[
             "Month Label"
         ] = (
@@ -1648,20 +1571,17 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         sku_3m_mae = (
             sku_eval[
                 "3M Absolute Error"
             ].mean()
         )
 
-
         sku_6m_mae = (
             sku_eval[
                 "6M Absolute Error"
             ].mean()
         )
-
 
         sku_3m_mape = (
             pd.to_numeric(
@@ -1674,7 +1594,6 @@ elif page == "Forecast Evaluation":
             .mean()
         )
 
-
         sku_6m_mape = (
             pd.to_numeric(
                 sku_eval[
@@ -1686,14 +1605,11 @@ elif page == "Forecast Evaluation":
             .mean()
         )
 
-
         st.subheader(
             "Product-Level Comparison"
         )
 
-
         c1, c2, c3, c4 = st.columns(4)
-
 
         with c1:
 
@@ -1702,14 +1618,12 @@ elif page == "Forecast Evaluation":
                 f"{sku_3m_mae:.1f}"
             )
 
-
         with c2:
 
             st.metric(
                 "6-Month Forecast MAE",
                 f"{sku_6m_mae:.1f}"
             )
-
 
         with c3:
 
@@ -1718,14 +1632,12 @@ elif page == "Forecast Evaluation":
                 f"{sku_3m_mape:.1f}%"
             )
 
-
         with c4:
 
             st.metric(
                 "6-Month Forecast MAPE",
                 f"{sku_6m_mape:.1f}%"
             )
-
 
         if sku_3m_mape < sku_6m_mape:
 
@@ -1745,12 +1657,10 @@ elif page == "Forecast Evaluation":
                 "Both methods performed similarly"
             )
 
-
         st.info(
             f"For {selected_eval_sku}, the better-performing "
             f"method is: {sku_best}."
         )
-
 
         comparison_chart_data = (
             sku_eval[
@@ -1768,7 +1678,6 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         chart = px.line(
             comparison_chart_data,
             x="Month Label",
@@ -1781,12 +1690,10 @@ elif page == "Forecast Evaluation":
             )
         )
 
-
         st.plotly_chart(
             chart,
             use_container_width=True
         )
-
 
         display_eval = (
             sku_eval[
@@ -1804,7 +1711,6 @@ elif page == "Forecast Evaluation":
             .copy()
         )
 
-
         numeric_columns = [
             "Forecast 3M",
             "Forecast 6M",
@@ -1813,7 +1719,6 @@ elif page == "Forecast Evaluation":
             "3M APE",
             "6M APE"
         ]
-
 
         for column in numeric_columns:
 
@@ -1829,13 +1734,11 @@ elif page == "Forecast Evaluation":
                 .round(1)
             )
 
-
         st.dataframe(
             display_eval,
             use_container_width=True,
             hide_index=True
         )
-
 
         st.download_button(
             "Download Forecast Comparison",
@@ -1849,24 +1752,20 @@ elif page == "Forecast Evaluation":
             mime="text/csv"
         )
 
-
         st.subheader(
             "Evaluation Notes"
         )
-
 
         st.write(
             "The three-month moving average remains the "
             "current baseline forecasting method."
         )
 
-
         st.write(
             "The six-month moving average is being used as "
             "a comparison method to check whether using a "
             "longer sales history improves forecast accuracy."
         )
-
 
         st.write(
             "MAE measures the average size of the forecast error "
@@ -1885,7 +1784,6 @@ elif page == "SKU Analysis":
         "Product / SKU Analysis"
     )
 
-
     selected_sku = (
         st.selectbox(
             "Choose Product SKU",
@@ -1897,7 +1795,6 @@ elif page == "SKU Analysis":
         )
     )
 
-
     product = products[
         products[
             "sku"
@@ -1906,14 +1803,11 @@ elif page == "SKU Analysis":
         selected_sku
     ].iloc[0]
 
-
     result = calculate_sku_projection(
         selected_sku
     )
 
-
     c1, c2, c3, c4 = st.columns(4)
-
 
     with c1:
 
@@ -1924,7 +1818,6 @@ elif page == "SKU Analysis":
             ]
         )
 
-
     with c2:
 
         st.metric(
@@ -1934,14 +1827,12 @@ elif page == "SKU Analysis":
             ]
         )
 
-
     with c3:
 
         st.metric(
             "Lead Time",
             f"{int(product['lead_time_days'])} days"
         )
-
 
     with c4:
 
@@ -1953,7 +1844,6 @@ elif page == "SKU Analysis":
                 ]
             )
         )
-
 
     if result is None:
 
@@ -1969,12 +1859,10 @@ elif page == "SKU Analysis":
             f"{result['current_inventory']:,} units"
         )
 
-
         st.metric(
             "3-Month Moving Average",
             f"{result['base_forecast']:.0f} units/month"
         )
-
 
         st.dataframe(
             result[
@@ -1983,7 +1871,6 @@ elif page == "SKU Analysis":
             use_container_width=True,
             hide_index=True
         )
-
 
         chart = px.line(
             result[
@@ -1995,12 +1882,10 @@ elif page == "SKU Analysis":
             title="Projected Inventory"
         )
 
-
         st.plotly_chart(
             chart,
             use_container_width=True
         )
-
 
         reorder = calculate_reorder(
             product,
@@ -2012,30 +1897,71 @@ elif page == "SKU Analysis":
             ]
         )
 
+        # ====================================================
+        # IMPROVED SHORTAGE & REORDER GUIDANCE
+        # ====================================================
 
         if reorder:
 
+            shortage_month_text = result[
+                "shortage_month"
+            ].strftime(
+                "%b %Y"
+            )
+
+            order_date_text = reorder[
+                "order_date"
+            ].strftime(
+                "%d %b %Y"
+            )
+
+            order_quantity = reorder[
+                "order_quantity"
+            ]
+
             st.warning(
-                "Projected shortage: "
-                f"{result['shortage_month'].strftime('%b %Y')}"
+                f"⚠️ Projected shortage: "
+                f"{shortage_month_text}"
             )
 
-
-            st.write(
-                "Suggested order date: "
-                f"{reorder['order_date'].strftime('%d %b %Y')}"
+            st.info(
+                f"Based on the current 3-month demand forecast and "
+                f"{int(product['lead_time_days'])}-day supplier lead time, "
+                f"the suggested order date is {order_date_text}."
             )
 
+            c1, c2 = st.columns(2)
 
-            st.write(
-                "Suggested order quantity: "
-                f"{reorder['order_quantity']:,} units"
+            with c1:
+
+                st.metric(
+                    "Suggested Order Date",
+                    order_date_text
+                )
+
+            with c2:
+
+                st.metric(
+                    "Suggested Order Quantity",
+                    f"{order_quantity:,} units"
+                )
+
+            st.caption(
+                "The suggested quantity is based on approximately "
+                "three months of forecast demand and is rounded up "
+                "to the product pack size."
             )
 
         else:
 
             st.success(
-                "No immediate reorder is recommended."
+                "✅ No shortage is projected within the current "
+                "12-month planning period."
+            )
+
+            st.caption(
+                "Based on current inventory, incoming purchase orders "
+                "and forecast demand, an immediate reorder is not required."
             )
 
 
@@ -2049,7 +1975,6 @@ elif page == "Scenario Planner":
         "What-If Scenario Planner"
     )
 
-
     selected_sku = (
         st.selectbox(
             "Choose Product SKU",
@@ -2062,7 +1987,6 @@ elif page == "Scenario Planner":
         )
     )
 
-
     product = products[
         products[
             "sku"
@@ -2071,9 +1995,7 @@ elif page == "Scenario Planner":
         selected_sku
     ].iloc[0]
 
-
     c1, c2 = st.columns(2)
-
 
     with c1:
 
@@ -2092,7 +2014,6 @@ elif page == "Scenario Planner":
             )
         )
 
-
     with c2:
 
         shipment_delay = (
@@ -2110,18 +2031,15 @@ elif page == "Scenario Planner":
             )
         )
 
-
     base = calculate_sku_projection(
         selected_sku
     )
-
 
     scenario = calculate_sku_projection(
         selected_sku,
         demand_increase,
         shipment_delay
     )
-
 
     if (
         base is None
@@ -2144,7 +2062,6 @@ elif page == "Scenario Planner":
             ]
         )
 
-
         scenario_reorder = calculate_reorder(
             product,
             scenario[
@@ -2154,7 +2071,6 @@ elif page == "Scenario Planner":
                 "shortage_month"
             ]
         )
-
 
         comparison = pd.DataFrame(
             {
@@ -2181,7 +2097,6 @@ elif page == "Scenario Planner":
             }
         )
 
-
         comparison_long = (
             comparison
             .melt(
@@ -2190,7 +2105,6 @@ elif page == "Scenario Planner":
                 value_name="Closing Inventory"
             )
         )
-
 
         chart = px.line(
             comparison_long,
@@ -2201,12 +2115,10 @@ elif page == "Scenario Planner":
             title="Normal vs Scenario Inventory Projection"
         )
 
-
         st.plotly_chart(
             chart,
             use_container_width=True
         )
-
 
         summary = pd.DataFrame(
             {
@@ -2285,7 +2197,6 @@ elif page == "Scenario Planner":
                 ]
             }
         )
-
 
         st.dataframe(
             summary,
